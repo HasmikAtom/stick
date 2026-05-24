@@ -49,3 +49,6 @@ data/auth.sqlite
 data/auth.sqlite-journal
 data/auth.sqlite-shm
 data/auth.sqlite-wal
+
+# brainstorm session artifacts
+.superpowers/
