@@ -51,39 +51,48 @@ func (r *Repository) Upsert(userID string, layout StoredLayout) error {
 	return err
 }
 
-// Validate enforces the StoredLayout schema.
+// ErrInvalidLayout is the sentinel wrapped by every Validate failure.
+// Callers use errors.Is(err, ErrInvalidLayout) to distinguish bad-input
+// (400) from internal failures (500).
+var ErrInvalidLayout = errors.New("invalid layout")
+
+func invalid(format string, args ...any) error {
+	return fmt.Errorf("%w: "+format, append([]any{ErrInvalidLayout}, args...)...)
+}
+
+// Validate enforces the StoredLayout schema. Every returned error wraps
+// ErrInvalidLayout.
 func Validate(l StoredLayout) error {
 	if l.Version != CurrentVersion {
-		return fmt.Errorf("unsupported layout version %d (expected %d)", l.Version, CurrentVersion)
+		return invalid("unsupported version %d (expected %d)", l.Version, CurrentVersion)
 	}
 	if len(l.Widgets) == 0 || len(l.Widgets) > MaxWidgetsInLayout {
-		return fmt.Errorf("widgets must contain 1..%d entries, got %d", MaxWidgetsInLayout, len(l.Widgets))
+		return invalid("widgets must contain 1..%d entries, got %d", MaxWidgetsInLayout, len(l.Widgets))
 	}
 	seen := make(map[string]bool, len(l.Widgets))
 	for _, w := range l.Widgets {
 		spec, ok := KnownWidgets[w.I]
 		if !ok {
-			return fmt.Errorf("unknown widget id %q", w.I)
+			return invalid("unknown widget id %q", w.I)
 		}
 		if seen[w.I] {
-			return fmt.Errorf("duplicate widget id %q", w.I)
+			return invalid("duplicate widget id %q", w.I)
 		}
 		seen[w.I] = true
 		if w.X < 0 || w.Y < 0 || w.W <= 0 || w.H <= 0 {
-			return fmt.Errorf("widget %q has non-positive dimensions", w.I)
+			return invalid("widget %q has non-positive dimensions", w.I)
 		}
 		if w.X+w.W > GridCols {
-			return fmt.Errorf("widget %q overflows grid: x+w=%d > %d", w.I, w.X+w.W, GridCols)
+			return invalid("widget %q overflows grid: x+w=%d > %d", w.I, w.X+w.W, GridCols)
 		}
 		if w.W < spec.MinW || w.H < spec.MinH {
-			return fmt.Errorf("widget %q below minimum size (w=%d<%d or h=%d<%d)", w.I, w.W, spec.MinW, w.H, spec.MinH)
+			return invalid("widget %q below minimum size (w=%d<%d or h=%d<%d)", w.I, w.W, spec.MinW, w.H, spec.MinH)
 		}
 	}
-	// pairwise overlap check
 	for i := 0; i < len(l.Widgets); i++ {
 		for j := i + 1; j < len(l.Widgets); j++ {
 			if overlaps(l.Widgets[i], l.Widgets[j]) {
-				return fmt.Errorf("widgets %q and %q overlap", l.Widgets[i].I, l.Widgets[j].I)
+				return invalid("widgets %q and %q overlap", l.Widgets[i].I, l.Widgets[j].I)
 			}
 		}
 	}

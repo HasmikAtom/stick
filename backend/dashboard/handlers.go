@@ -1,6 +1,8 @@
 package dashboard
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +21,8 @@ func (h *Handlers) Get(c *gin.Context) {
 	userID := c.GetString("userId")
 	layout, err := h.repo.Get(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("dashboard.Get user=%s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load layout"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"layout": layout})
@@ -38,7 +41,12 @@ func (h *Handlers) Put(c *gin.Context) {
 		return
 	}
 	if err := h.repo.Upsert(userID, body.Layout); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrInvalidLayout) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		log.Printf("dashboard.Put user=%s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save layout"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"layout": body.Layout})
