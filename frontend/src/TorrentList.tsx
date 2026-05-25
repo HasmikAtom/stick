@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import {
@@ -13,8 +13,8 @@ import { RefreshCw, X, Trash2, Pencil, Check } from "lucide-react";
 import { TorrentStatus } from "./Models";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/services";
+import { useTorrents } from "@/hooks/useTorrents";
 
-const POLL_INTERVAL = 3000;
 const BYTES_PER_MB = 1024 * 1024;
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -30,42 +30,17 @@ interface Props {
 }
 
 export const TorrentList: React.FC<Props> = React.memo(({ refreshTrigger }) => {
-    const [torrents, setTorrents] = useState<TorrentStatus[] | null>(null);
+    const { torrents, refresh: fetchTorrents } = useTorrents();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
     const editInputRef = useRef<HTMLInputElement>(null);
-    const intervalRef = useRef<number | null>(null);
     const { toast } = useToast();
-
-    const fetchTorrents = useCallback(async (showError = false) => {
-      try {
-        const response = await apiFetch(`/api/torrents`);
-        const data = await response.json();
-        if (response.ok) {
-          setTorrents(data);
-        } else if (showError) {
-          toast({
-            variant: "destructive",
-            title: "Failed to fetch torrents",
-            description: data.error || "Could not load torrent list",
-          });
-        }
-      } catch (error) {
-        if (showError) {
-          toast({
-            variant: "destructive",
-            title: "Connection error",
-            description: error instanceof Error ? error.message : "Failed to connect to server",
-          });
-        }
-      }
-    }, [toast]);
 
     const handleManualRefresh = async () => {
       setIsRefreshing(true);
-      await fetchTorrents(true);
+      await fetchTorrents();
       setIsRefreshing(false);
     };
 
@@ -147,41 +122,6 @@ export const TorrentList: React.FC<Props> = React.memo(({ refreshTrigger }) => {
       }
       cancelEditing();
     };
-
-    const startPolling = useCallback(() => {
-      if (intervalRef.current === null) {
-        intervalRef.current = window.setInterval(fetchTorrents, POLL_INTERVAL);
-      }
-    }, [fetchTorrents]);
-
-    const stopPolling = useCallback(() => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }, []);
-
-    // Initial fetch and polling with Page Visibility API
-    useEffect(() => {
-      fetchTorrents();
-      startPolling();
-
-      const handleVisibilityChange = () => {
-        if (document.hidden) {
-          stopPolling();
-        } else {
-          fetchTorrents(); // Refresh immediately when tab becomes visible
-          startPolling();
-        }
-      };
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-
-      return () => {
-        stopPolling();
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
-    }, [fetchTorrents, startPolling, stopPolling]);
 
     useEffect(() => {
       if (refreshTrigger !== undefined) {
