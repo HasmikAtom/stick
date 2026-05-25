@@ -29,12 +29,13 @@ export type DownloadSource = typeof ScraperConfig[keyof typeof ScraperConfig]['d
 
 interface Props {
   mode: 'piratebay' | 'rutracker' | 'both';
+  defaultQuery?: string;
 }
 
-export const ScraperUI: React.FC<Props> = ({ mode }) => {
+export const ScraperUI: React.FC<Props> = ({ mode, defaultQuery = "" }) => {
 
     const [searchLoading, setSearchLoading] = useState<boolean>(false);
-    const [torrentName, setTorrentName] = useState<string>("");
+    const [torrentName, setTorrentName] = useState<string>(defaultQuery);
     const [foundTorrents, setFoundTorrents] = useState<ScrapedTorrents[] | null>(null);
     const [selectedTorrents, setSelectedTorrents] = useState<Map<string, string>>(new Map());
     const [filterText, setFilterText] = useState<string>("");
@@ -109,6 +110,16 @@ export const ScraperUI: React.FC<Props> = ({ mode }) => {
         };
       });
     }
+
+    // Auto-run a search on mount if the parent seeded a defaultQuery.
+    // Effect runs once per mount; SearchPage uses key={q} so a new query
+    // remounts the component, which re-fires this effect with the new value.
+    useEffect(() => {
+      if (defaultQuery.trim()) {
+        handleScrapeSearch();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleDownloadComplete = () => {
       clearSelection();
