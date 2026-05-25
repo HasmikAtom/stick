@@ -5,7 +5,7 @@ import { ScrapedTorrentsCards } from './ScrapedTorrents';
 import { useToast } from '@/hooks/use-toast';
 
 const ScraperConfig = {
-  thepiratebay: {
+  piratebay: {
     scrapeEndpoint: '/api/scrape/piratebay/',
     scrapeStreamEndpoint: '/api/scrape/piratebay/',
     downloadSource: 'magnet' as const,
@@ -28,14 +28,10 @@ interface SSEEvent {
 export type DownloadSource = typeof ScraperConfig[keyof typeof ScraperConfig]['downloadSource'];
 
 interface Props {
-  type: keyof typeof ScraperConfig
-  switchTab: (tabValue: string) => void;
+  mode: 'piratebay' | 'rutracker' | 'both';
 }
 
-export const ScraperUI: React.FC<Props> = ({
-  type,
-  switchTab,
-}) => {
+export const ScraperUI: React.FC<Props> = ({ mode }) => {
 
     const [searchLoading, setSearchLoading] = useState<boolean>(false);
     const [torrentName, setTorrentName] = useState<string>("");
@@ -44,102 +40,78 @@ export const ScraperUI: React.FC<Props> = ({
     const [filterText, setFilterText] = useState<string>("");
     const [filterText2, setFilterText2] = useState<string>("");
     const [selectedUploaders, setSelectedUploaders] = useState<Set<string>>(new Set());
-    const eventSourceRef = useRef<EventSource | null>(null);
+    const eventSourceRefs = useRef<EventSource[]>([]);
     const { toast } = useToast();
 
-    // Cleanup EventSource on unmount
+    const sources: Array<'piratebay' | 'rutracker'> = mode === 'both'
+      ? ['piratebay', 'rutracker']
+      : [mode];
+
+    // Cleanup EventSources on unmount
     useEffect(() => {
       return () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-        }
+        eventSourceRefs.current.forEach(es => es.close());
+        eventSourceRefs.current = [];
       };
     }, []);
 
-    const config = ScraperConfig[type];
-    const downloadSource = config.downloadSource;
+    // Default downloadSource for the results card. In 'both' mode we fall back
+    // to 'magnet'; per-row source tagging lets ScrapedTorrentsCards pick the
+    // correct field per row.
+    const downloadSource: DownloadSource = mode === 'rutracker'
+      ? ScraperConfig.rutracker.downloadSource
+      : ScraperConfig.piratebay.downloadSource;
 
     const handleScrapeSearch = async () => {
-      // Close any existing EventSource
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+      // Close any existing EventSources
+      eventSourceRefs.current.forEach(es => es.close());
+      eventSourceRefs.current = [];
 
       setSearchLoading(true);
-      setFoundTorrents(null);
+      setFoundTorrents([]);
 
-      // Use SSE for real-time progress updates
-      const streamUrl = `${config.scrapeStreamEndpoint}${encodeURIComponent(torrentName)}/stream`;
-      const eventSource = new EventSource(streamUrl);
-      eventSourceRef.current = eventSource;
+      let completed = 0;
+      const total = sources.length;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data: SSEEvent = JSON.parse(event.data);
+      sources.forEach((source) => {
+        const cfg = ScraperConfig[source];
+        const url = `${cfg.scrapeStreamEndpoint}${encodeURIComponent(torrentName)}/stream`;
+        const es = new EventSource(url);
+        eventSourceRefs.current.push(es);
 
-          switch (data.type) {
-            case 'trying':
+        es.onmessage = (event) => {
+          try {
+            const data: SSEEvent = JSON.parse(event.data);
+            if (data.type === 'success' && Array.isArray(data.data)) {
+              const tagged: ScrapedTorrents[] = (data.data as ScrapedTorrents[])
+                .map(t => ({ ...t, source }));
+              setFoundTorrents(prev => [...(prev ?? []), ...tagged]);
+            } else if (data.type === 'error') {
               toast({
-                title: `Searching ${data.label}...`,
+                variant: 'destructive',
+                title: `${source} search failed`,
                 description: data.message,
               });
-              break;
-
-            case 'success':
-              toast({
-                title: "Source found!",
-                description: data.message,
-              });
-              break;
-
-            case 'error':
-              toast({
-                variant: "destructive",
-                title: `${data.label} failed`,
-                description: data.message,
-              });
-              break;
-
-            case 'complete':
-              eventSource.close();
-              eventSourceRef.current = null;
-              setSearchLoading(false);
-
-              if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-                setFoundTorrents(data.data);
-                toast({
-                  title: "Search complete",
-                  description: data.message,
-                });
-              } else {
-                toast({
-                  variant: "destructive",
-                  title: "No results",
-                  description: data.message || "No torrents found",
-                });
-              }
-              break;
+            } else if (data.type === 'complete') {
+              es.close();
+              completed += 1;
+              if (completed === total) setSearchLoading(false);
+            }
+          } catch (e) {
+            console.error('SSE parse error', e);
           }
-        } catch (e) {
-          console.error('Failed to parse SSE event:', e);
-        }
-      };
+        };
 
-      eventSource.onerror = () => {
-        eventSource.close();
-        eventSourceRef.current = null;
-        setSearchLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Connection error",
-          description: "Lost connection to server",
-        });
-      };
+        es.onerror = () => {
+          es.close();
+          completed += 1;
+          if (completed === total) setSearchLoading(false);
+        };
+      });
     }
 
     const handleDownloadComplete = () => {
       clearSelection();
-      switchTab("download");
       toast({
         title: "Download started",
         description: "Torrent(s) added to queue",
@@ -172,7 +144,12 @@ export const ScraperUI: React.FC<Props> = ({
       if (!foundTorrents) return;
       const newMap = new Map<string, string>();
       foundTorrents.forEach(torrent => {
-        const downloadUrl = torrent[downloadSource] || '';
+        const perRowSource: DownloadSource = torrent.source === 'rutracker'
+          ? 'download_url'
+          : torrent.source === 'piratebay'
+            ? 'magnet'
+            : downloadSource;
+        const downloadUrl = torrent[perRowSource] || '';
         if (downloadUrl) {
           newMap.set(torrent.id, downloadUrl);
         }

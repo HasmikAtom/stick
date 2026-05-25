@@ -24,6 +24,8 @@ export interface ScrapedTorrents {
   download_url: string; // for rutracker
 
   downloads: string;
+
+  source?: 'piratebay' | 'rutracker';
 }
 
 export interface SelectedTorrent {

@@ -136,7 +136,17 @@ export const ScrapedTorrentsCards: React.FC<Props> = React.memo(({
         {filteredTorrents && filteredTorrents.length > 0 ? (
           <div className="space-y-2">
             {filteredTorrents.map((torrent) => {
-              const downloadUrl = torrent[downloadSource] || '';
+              // Per-row source overrides the prop-level downloadSource so that
+              // mixed-source results (mode='both') pick the correct field.
+              const perRowSource = torrent.source === 'rutracker'
+                ? 'download_url'
+                : torrent.source === 'piratebay'
+                  ? 'magnet'
+                  : downloadSource;
+              const downloadUrl = torrent[perRowSource] || '';
+              const rowIsRuTracker = torrent.source
+                ? torrent.source === 'rutracker'
+                : isRuTracker;
               const isSelected = selectedTorrents.has(torrent.id);
 
               return (
@@ -156,6 +166,15 @@ export const ScrapedTorrentsCards: React.FC<Props> = React.memo(({
                     <div className="flex-1 min-w-0">
                       <p className="text-base font-medium leading-snug break-words">{torrent.title}</p>
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {torrent.source && (
+                          <span className={`rounded-md px-2 py-0.5 text-xs ${
+                            torrent.source === 'piratebay'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              : 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                          }`}>
+                            {torrent.source === 'piratebay' ? 'PirateBay' : 'Rutracker'}
+                          </span>
+                        )}
                         <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{torrent.category}</span>
                         <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{torrent.size}</span>
                         <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-green-500">SE {torrent.se}</span>
@@ -166,7 +185,7 @@ export const ScrapedTorrentsCards: React.FC<Props> = React.memo(({
                     <div className="shrink-0">
                       <TorrentDownloadPopup
                         downloadUrl={downloadUrl}
-                        isRuTracker={isRuTracker}
+                        isRuTracker={rowIsRuTracker}
                         onDownloadComplete={onDownloadComplete}
                       />
                     </div>
