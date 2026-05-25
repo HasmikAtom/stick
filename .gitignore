@@ -52,3 +52,10 @@ data/auth.sqlite-wal
 
 # brainstorm session artifacts
 .superpowers/
+
+# Backend SQLite runtime files
+data/backend.sqlite
+data/backend.sqlite-shm
+data/backend.sqlite-wal
+data-dev/
+

@@ -35,11 +35,13 @@ services:
       - TRANSMISSION_PORT=${DEV_TRANSMISSION_PORT:-9091}
       - TRANSMISSION_USERNAME=${DEV_TRANSMISSION_USERNAME:-}
       - TRANSMISSION_PASSWORD=${DEV_TRANSMISSION_PASSWORD:-}
+      - DEV_DATABASE_PATH=/data/backend.sqlite
     expose:
       - "8080"
     volumes:
       - ./backend:/app
       - /:/hostfs:ro
+      - ./data-dev:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

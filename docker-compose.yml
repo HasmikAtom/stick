@@ -35,10 +35,12 @@ services:
       - TRANSMISSION_PORT=${PROD_TRANSMISSION_PORT}
       - TRANSMISSION_USERNAME=${PROD_TRANSMISSION_USERNAME}
       - TRANSMISSION_PASSWORD=${PROD_TRANSMISSION_PASSWORD}
+      - PROD_DATABASE_PATH=/data/backend.sqlite
     expose:
       - "8080"
     volumes:
       - /:/hostfs:ro
+      - ./data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
