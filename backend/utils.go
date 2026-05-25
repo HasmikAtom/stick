@@ -272,6 +272,7 @@ func ParseTorrentStatus(torrent map[string]interface{}) (TorrentStatus, bool) {
 
 	totalSize, _ := GetInt64(torrent, "totalSize")
 	addedDate, _ := GetInt64(torrent, "addedDate")
+	doneDate, _ := GetInt64(torrent, "doneDate")
 
 	status := TorrentStatus{
 		ID:           id,
@@ -280,6 +281,7 @@ func ParseTorrentStatus(torrent map[string]interface{}) (TorrentStatus, bool) {
 		RateDownload: rateDownload,
 		TotalSize:    totalSize,
 		AddedDate:    addedDate,
+		DoneDate:     doneDate,
 		Status:       getStatusString(statusCode),
 	}
 

@@ -20,6 +20,7 @@ type TorrentStatus struct {
 	RateDownload int64   `json:"rateDownload"`
 	TotalSize    int64   `json:"totalSize"`
 	AddedDate    int64   `json:"addedDate"`
+	DoneDate     int64   `json:"doneDate"`
 	Status       string  `json:"status"`
 	Error        int     `json:"error"`
 	ErrorString  string  `json:"errorString"`

@@ -5,6 +5,7 @@ export interface TorrentStatus {
   rateDownload: number;
   totalSize: number;
   addedDate: number;
+  doneDate: number;
   status: string;
 }
 
