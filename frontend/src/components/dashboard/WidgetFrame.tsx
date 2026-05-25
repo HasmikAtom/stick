@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
-import type { LucideIcon, ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useDashboard } from './DashboardContext';
 import type { WidgetId } from './types';
