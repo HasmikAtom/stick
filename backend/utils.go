@@ -23,6 +23,7 @@ func SetConfigs() *Config {
 		TransmissionPassword: os.Getenv(fmt.Sprintf("%s_TRANSMISSION_PASSWORD", envPrefix)),
 		RutrackerUsername:    os.Getenv(fmt.Sprintf("%s_RUTRACKER_USERNAME", envPrefix)),
 		RutrackerPassword:    os.Getenv(fmt.Sprintf("%s_RUTRACKER_PASSWORD", envPrefix)),
+		DatabasePath:         os.Getenv(fmt.Sprintf("%s_DATABASE_PATH", envPrefix)),
 	}
 }
 

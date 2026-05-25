@@ -10,6 +10,7 @@ type Config struct {
 	ThepiratebayURL      string
 	RutrackerUsername    string
 	RutrackerPassword    string
+	DatabasePath         string
 }
 
 type TorrentStatus struct {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/hasmikatom/torrent/db"
 	"github.com/hasmikatom/torrent/middleware"
 	"github.com/hasmikatom/torrent/scraper"
 	"github.com/hasmikatom/torrent/transmission"
@@ -45,6 +46,22 @@ func init() {
 
 func main() {
 	r := gin.Default()
+
+	// Open and migrate the SQLite database
+	dbPath := c.DatabasePath
+	if dbPath == "" {
+		dbPath = "./data/backend.sqlite"
+	}
+	sqlDB, err := db.Open(dbPath)
+	if err != nil {
+		log.Fatalf("Failed to open database at %s: %v", dbPath, err)
+	}
+	defer sqlDB.Close()
+
+	if err := db.Migrate(sqlDB); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+	log.Printf("Database ready at %s", dbPath)
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
