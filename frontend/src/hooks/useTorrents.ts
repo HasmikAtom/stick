@@ -5,9 +5,10 @@ import type { TorrentStatus } from '@/Models';
 const POLL_INTERVAL = 3000;
 
 let cache: TorrentStatus[] | null = null;
-let subscribers = new Set<(t: TorrentStatus[] | null) => void>();
+const subscribers = new Set<(t: TorrentStatus[] | null) => void>();
 let intervalId: number | null = null;
 let inflight: Promise<void> | null = null;
+let visibilityListenerAttached = false;
 
 async function fetchOnce() {
   if (inflight) return inflight;
@@ -27,29 +28,37 @@ async function fetchOnce() {
   return inflight;
 }
 
-function ensurePolling() {
-  if (intervalId !== null || subscribers.size === 0) return;
+function startInterval() {
+  if (intervalId !== null) return;
   intervalId = window.setInterval(fetchOnce, POLL_INTERVAL);
-
-  // Page Visibility: pause polling when hidden, refresh + resume on visible
-  document.addEventListener('visibilitychange', onVisibilityChange);
 }
 
-function stopPolling() {
+function stopInterval() {
   if (intervalId !== null) {
     clearInterval(intervalId);
     intervalId = null;
-    document.removeEventListener('visibilitychange', onVisibilityChange);
   }
 }
 
 function onVisibilityChange() {
   if (document.hidden) {
-    stopPolling();
+    stopInterval();
   } else {
     fetchOnce();
-    ensurePolling();
+    startInterval();
   }
+}
+
+function attachVisibilityListener() {
+  if (visibilityListenerAttached) return;
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  visibilityListenerAttached = true;
+}
+
+function detachVisibilityListener() {
+  if (!visibilityListenerAttached) return;
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  visibilityListenerAttached = false;
 }
 
 export interface UseTorrentsResult {
@@ -63,10 +72,14 @@ export function useTorrents(): UseTorrentsResult {
   useEffect(() => {
     subscribers.add(setTorrents);
     fetchOnce();
-    ensurePolling();
+    attachVisibilityListener();
+    if (!document.hidden) startInterval();
     return () => {
       subscribers.delete(setTorrents);
-      if (subscribers.size === 0) stopPolling();
+      if (subscribers.size === 0) {
+        stopInterval();
+        detachVisibilityListener();
+      }
     };
   }, []);
 
