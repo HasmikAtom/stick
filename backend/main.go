@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/hasmikatom/torrent/dashboard"
 	"github.com/hasmikatom/torrent/db"
 	"github.com/hasmikatom/torrent/middleware"
 	"github.com/hasmikatom/torrent/scraper"
@@ -63,6 +64,9 @@ func main() {
 	}
 	log.Printf("Database ready at %s", dbPath)
 
+	dashRepo := dashboard.NewRepository(sqlDB)
+	dashHandlers := dashboard.NewHandlers(dashRepo)
+
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
@@ -99,6 +103,9 @@ func main() {
 		api.GET("/scrape/piratebay/:name/stream", scrapePirateBaySSE)
 		api.GET("/scrape/rutracker/:name/stream", scrapeRuTrackerSSE)
 		api.GET("/scrape/sources", getScraperSources)
+
+		api.GET("/user/dashboard", dashHandlers.Get)
+		api.PUT("/user/dashboard", dashHandlers.Put)
 	}
 
 	// Create server with graceful shutdown
