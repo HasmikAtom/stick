@@ -4,6 +4,16 @@ import { LoginScreen } from "@/components/LoginScreen";
 import { AppShell } from "@/components/AppShell";
 import { Home } from "@/components/Home";
 import { AdminPage } from "@/components/AdminPage";
+import { SearchPage } from "@/pages/SearchPage";
+import { DashboardProvider } from "@/components/dashboard";
+
+type SessionUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  image?: string | null;
+  role?: string | null;
+};
 
 export default function App() {
   const { data: session, isPending } = useSession();
@@ -17,22 +27,27 @@ export default function App() {
   }
   if (!session) return <LoginScreen />;
 
+  const user = session.user as unknown as SessionUser;
+
   return (
     <BrowserRouter>
-      <AppShell user={session.user as any}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route
-            path="/admin"
-            element={
-              (session.user as any).role === "admin"
-                ? <AdminPage />
-                : <Navigate to="/" replace />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
+      <DashboardProvider>
+        <AppShell user={user}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route
+              path="/admin"
+              element={
+                user.role === "admin"
+                  ? <AdminPage />
+                  : <Navigate to="/" replace />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppShell>
+      </DashboardProvider>
     </BrowserRouter>
   );
 }

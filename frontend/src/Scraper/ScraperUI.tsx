@@ -22,7 +22,7 @@ interface SSEEvent {
   message: string;
   host?: string;
   label?: string;
-  data?: any;
+  data?: unknown;
 }
 
 export type DownloadSource = typeof ScraperConfig[keyof typeof ScraperConfig]['downloadSource'];
