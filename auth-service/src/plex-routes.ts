@@ -75,6 +75,7 @@ export function mountPlexRoutes(app: Hono<any>) {
   app.post("/api/plex/server", async (c) => {
     const user = c.get("user") as AuthUser;
     const body = (await c.req.json().catch(() => ({}))) as { machineId?: string };
+    if (!body.machineId) return c.json({ error: "machineId required" }, 400);
     const conn = getConnection(user.id);
     if (!conn) return c.json({ error: "not linked" }, 400);
 
