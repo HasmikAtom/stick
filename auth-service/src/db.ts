@@ -22,6 +22,23 @@ export function runOwnedMigrations() {
       invited_by TEXT,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
+
+    CREATE TABLE IF NOT EXISTS plex_app (
+      id        INTEGER PRIMARY KEY CHECK (id = 1),
+      client_id TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS plex_connection (
+      user_id           TEXT PRIMARY KEY,
+      plex_username     TEXT,
+      account_token     TEXT NOT NULL,
+      server_machine_id TEXT,
+      server_name       TEXT,
+      server_uri        TEXT,
+      server_token      TEXT,
+      created_at        INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at        INTEGER NOT NULL DEFAULT (unixepoch())
+    );
   `);
 }
 
