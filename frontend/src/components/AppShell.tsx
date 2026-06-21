@@ -53,6 +53,10 @@ export function AppShell({ user, children }: { user: User; children: React.React
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to="/plex">Plex</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <ThemeIcon className="mr-2 h-4 w-4" />
