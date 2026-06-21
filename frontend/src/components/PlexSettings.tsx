@@ -35,6 +35,8 @@ export function PlexSettings() {
     const { servers: svrs } = await res.json();
     if (svrs.length === 1) {
       await selectServer(svrs[0].machineId);
+    } else if (svrs.length === 0) {
+      setError("No Plex servers found on this account.");
     } else {
       setServers(svrs);
     }
@@ -84,8 +86,11 @@ export function PlexSettings() {
           pollActiveRef.current = false;
           setCode(null);
           setBusy(false);
+          await refresh();
           if (body.servers.length === 1) {
             await selectServer(body.servers[0].machineId);
+          } else if (body.servers.length === 0) {
+            setError("No Plex servers found on this account.");
           } else {
             setServers(body.servers);
           }
