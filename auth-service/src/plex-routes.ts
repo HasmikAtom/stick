@@ -116,6 +116,17 @@ export function mountPlexRoutes(app: Hono<any>) {
     });
   });
 
+  app.get("/api/plex/servers", async (c) => {
+    const user = c.get("user") as AuthUser;
+    const conn = getConnection(user.id);
+    if (!conn) return c.json({ error: "not linked" }, 400);
+    const clientId = getOrCreateClientId();
+    const servers = await listServers(clientId, conn.accountToken);
+    return c.json({
+      servers: servers.map((s) => ({ machineId: s.machineId, name: s.name })),
+    });
+  });
+
   app.delete("/api/plex/link", (c) => {
     const user = c.get("user") as AuthUser;
     deleteConnection(user.id);

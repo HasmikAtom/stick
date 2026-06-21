@@ -302,3 +302,36 @@ test("POST /api/plex/server returns 502 when Go probe finds nothing reachable", 
   assert.equal(res.status, 502);
   assert.equal(body.error, "no reachable connection");
 });
+
+test("GET /api/plex/servers lists servers for a linked user", async () => {
+  db.prepare("DELETE FROM plex_connection").run();
+  const store = await import("../plex/store.js");
+  store.saveAccountToken("user-1", "dave", "acct-tok");
+
+  const restore = mockFetch((url, init) => {
+    assert.match(url, /\/api\/v2\/resources/);
+    return new Response(
+      JSON.stringify([
+        {
+          name: "Living Room",
+          clientIdentifier: "machine-1",
+          provides: "server",
+          accessToken: "srv-tok",
+          connections: [{ uri: "http://10.0.0.5:32400", local: true, relay: false }],
+        },
+      ]),
+      { headers: { "content-type": "application/json" } },
+    );
+  });
+  const res = await makeApp().request("/api/plex/servers");
+  const body = await res.json();
+  restore();
+  assert.equal(res.status, 200);
+  assert.deepEqual(body.servers, [{ machineId: "machine-1", name: "Living Room" }]);
+});
+
+test("GET /api/plex/servers returns 400 when not linked", async () => {
+  db.prepare("DELETE FROM plex_connection").run();
+  const res = await makeApp().request("/api/plex/servers");
+  assert.equal(res.status, 400);
+});
