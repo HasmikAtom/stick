@@ -10,6 +10,7 @@ import { runOwnedMigrations, reconcileBootstrapAdmins } from "./db.js";
 import { requireAuth, requireAdmin } from "./middleware.js";
 import { proxyToGo } from "./proxy.js";
 import { mountAdminRoutes } from "./admin-routes.js";
+import { mountPlexRoutes } from "./plex-routes.js";
 
 // Migration order matters: Better Auth's own schema first (creates user,
 // session, account, verification), then our invited_emails, then reconcile
@@ -29,6 +30,7 @@ app.use("/api/admin/*", requireAuth, requireAdmin);
 mountAdminRoutes(app);
 
 app.use("/api/*", requireAuth);
+mountPlexRoutes(app);
 app.all("/api/*", proxyToGo);
 
 const PUBLIC_DIR = join(process.cwd(), "public");
