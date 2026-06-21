@@ -13,6 +13,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - BOOTSTRAP_ADMIN_EMAILS=${BOOTSTRAP_ADMIN_EMAILS}
+      - PLEX_TOKEN_ENC_KEY=${PLEX_TOKEN_ENC_KEY}
       - GO_BACKEND_URL=http://backend:8080
       - DATABASE_PATH=/data/auth.sqlite
       - NODE_ENV=production
