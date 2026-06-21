@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/services";
 import { Button } from "@/components/ui/button";
 
@@ -16,18 +16,43 @@ export function PlexSettings() {
   const [servers, setServers] = useState<Server[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const pollActiveRef = useRef(false);
 
-  async function refresh() {
+  async function refresh(): Promise<Status | null> {
     const res = await apiFetch("/api/plex/status");
-    if (res.ok) setStatus(await res.json());
+    if (res.ok) {
+      const s: Status = await res.json();
+      setStatus(s);
+      return s;
+    }
+    return null;
+  }
+
+  async function loadServers() {
+    const res = await apiFetch("/api/plex/servers");
+    if (!res.ok) return;
+    const { servers: svrs } = await res.json();
+    if (svrs.length === 1) {
+      await selectServer(svrs[0].machineId);
+    } else {
+      setServers(svrs);
+    }
   }
 
   useEffect(() => {
-    refresh();
+    (async () => {
+      const s = await refresh();
+      if (s?.linked && !s.serverSelected) await loadServers();
+    })();
+    return () => {
+      pollActiveRef.current = false;
+    };
   }, []);
 
   async function connect() {
     setError(null);
+    setMessage(null);
     setBusy(true);
     const res = await apiFetch("/api/plex/link/start", { method: "POST" });
     if (!res.ok) {
@@ -40,50 +65,81 @@ export function PlexSettings() {
     window.open(authUrl, "_blank", "noopener,noreferrer");
 
     const deadline = Date.now() + 120_000; // 2 min cap
+    pollActiveRef.current = true;
     const poll = async () => {
-      const r = await apiFetch("/api/plex/link/poll");
-      const body = await r.json();
-      if (body.status === "linked") {
-        setCode(null);
-        setBusy(false);
-        if (body.servers.length === 1) {
-          await selectServer(body.servers[0].machineId);
-        } else {
-          setServers(body.servers);
+      if (!pollActiveRef.current) return;
+      try {
+        const r = await apiFetch("/api/plex/link/poll");
+        if (!pollActiveRef.current) return;
+        if (!r.ok) {
+          pollActiveRef.current = false;
+          setBusy(false);
+          setCode(null);
+          setError("Lost contact with Plex. Please try again.");
+          return;
         }
-        return;
-      }
-      if (body.status === "expired" || Date.now() > deadline) {
-        setCode(null);
+        const body = await r.json();
+        if (!pollActiveRef.current) return;
+        if (body.status === "linked") {
+          pollActiveRef.current = false;
+          setCode(null);
+          setBusy(false);
+          if (body.servers.length === 1) {
+            await selectServer(body.servers[0].machineId);
+          } else {
+            setServers(body.servers);
+          }
+          return;
+        }
+        if (body.status === "expired" || Date.now() > deadline) {
+          pollActiveRef.current = false;
+          setCode(null);
+          setBusy(false);
+          setError("Link expired. Please try again.");
+          return;
+        }
+        setTimeout(poll, 2000);
+      } catch {
+        pollActiveRef.current = false;
         setBusy(false);
-        setError("Link expired. Please try again.");
-        return;
+        setCode(null);
+        setError("Lost contact with Plex. Please try again.");
       }
-      setTimeout(poll, 2000);
     };
     setTimeout(poll, 2000);
   }
 
   async function selectServer(machineId: string) {
     setBusy(true);
-    const res = await apiFetch("/api/plex/server", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ machineId }),
-    });
-    setBusy(false);
-    if (!res.ok) {
+    setError(null);
+    try {
+      const res = await apiFetch("/api/plex/server", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ machineId }),
+      });
+      if (!res.ok) {
+        setError("Could not reach that Plex server from TorrentUI.");
+        return;
+      }
+      setServers([]);
+      await refresh();
+    } catch {
       setError("Could not reach that Plex server from TorrentUI.");
-      return;
+    } finally {
+      setBusy(false);
     }
-    setServers([]);
-    await refresh();
   }
 
   async function testConnection() {
     setError(null);
+    setMessage(null);
     const res = await apiFetch("/api/plex/ping");
-    setError(res.ok ? "Connection OK." : "Server not reachable.");
+    if (res.ok) {
+      setMessage("Connection OK.");
+    } else {
+      setError("Server not reachable.");
+    }
   }
 
   async function unlink() {
@@ -91,13 +147,16 @@ export function PlexSettings() {
     setStatus({ linked: false });
     setServers([]);
     setCode(null);
+    setError(null);
+    setMessage(null);
   }
 
   return (
     <div className="mx-auto max-w-xl space-y-4 p-6">
       <h1 className="text-xl font-semibold">Plex</h1>
 
-      {error && <p className="text-sm text-muted-foreground">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {message && <p className="text-sm text-muted-foreground">{message}</p>}
 
       {!status.linked && (
         <Button onClick={connect} disabled={busy}>
@@ -129,7 +188,9 @@ export function PlexSettings() {
             {status.serverName ? <> · server <strong>{status.serverName}</strong></> : <> · no server selected</>}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={testConnection}>Test connection</Button>
+            {status.serverSelected && (
+              <Button variant="outline" onClick={testConnection}>Test connection</Button>
+            )}
             <Button variant="destructive" onClick={unlink}>Unlink</Button>
           </div>
         </div>
