@@ -9,6 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// plexHTTPClient is reused for all Plex /identity probes. The short timeout keeps
+// a slow or unreachable candidate connection from blocking the probe loop.
+var plexHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
 // plexIdentity GETs <baseURL>/identity with the token and returns the server's
 // machineIdentifier. ok=false means the server was unreachable or rejected the token.
 func plexIdentity(baseURL, token string) (string, bool) {
@@ -19,8 +23,7 @@ func plexIdentity(baseURL, token string) (string, bool) {
 	req.Header.Set("X-Plex-Token", token)
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := plexHTTPClient.Do(req)
 	if err != nil {
 		return "", false
 	}
@@ -45,7 +48,11 @@ type plexProbeReq struct {
 }
 
 // handlePlexProbe tries each candidate URI in order and returns the first reachable one.
-// Called internally by the auth-service when a user selects a server.
+// Called internally by the auth-service when a user selects a server. The candidate URIs
+// come from Plex.tv's discovery response relayed by the trusted auth-service (browser-supplied
+// values are stripped by the proxy), so they are not treated as arbitrary user input here.
+// If this endpoint ever becomes reachable directly by browser clients, add URL scheme/host
+// allowlisting to prevent SSRF.
 func handlePlexProbe(c *gin.Context) {
 	var req plexProbeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
