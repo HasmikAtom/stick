@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Hono } from "hono";
-import { proxyToGo } from "../proxy.js";
+
+process.env.PLEX_TOKEN_ENC_KEY =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+const { runOwnedMigrations } = await import("../db.js");
+runOwnedMigrations();
+
+const { proxyToGo } = await import("../proxy.js");
 
 function makeApp(captured: { headers?: Headers; url?: string }) {
   // mock Go backend with a simple fetch shim

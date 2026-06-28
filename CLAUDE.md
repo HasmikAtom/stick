@@ -28,6 +28,7 @@ Backend (Go+Gin, :8085 dev / :8080 internal in prod, no public port)
 ```
 
 - **auth-service** is the only public surface in prod. It owns sessions (SQLite via better-sqlite3), enforces the email allowlist, and reverse-proxies authenticated `/api/*` traffic to the Go backend after stripping any client-supplied `X-User-*` and `cookie` headers and re-attaching trusted ones from the validated session.
+- **Plex account linking**: the auth-service also owns per-user Plex integration via Plex's PIN-based OAuth flow. Routes live under `/api/plex/*` (`link/start`, `link/poll`, `server`, `servers`, `status`, and `DELETE link`). It stores per-user Plex tokens encrypted at rest in SQLite (AES-256-GCM, key from `PLEX_TOKEN_ENC_KEY`) and injects a trusted `X-Plex-Token` + `X-Plex-Server-Url` header (resolved per user) onto proxied `/api/*` requests — the same trusted-header pattern used for `X-User-*`. The Go backend consumes those headers and exposes `/plex/ping` (verify the linked server is reachable) and `/plex/probe` (internal: pick the first reachable server connection URL).
 - **Frontend (dev)** runs Vite on the host (:5173) and proxies `/api` to the dockerized auth-service at `:3000`.
 - **Backend** uses Chromedp browser pool (singleton via `sync.Once`) for scraping, with SSE streaming for real-time search results. All routes except `/health` require `X-User-Id`/`X-User-Email` headers (set only by auth-service).
 - **Prepare-Edit-Finalize flow**: Torrents go through prepare → poll metadata → user edits name → finalize before downloading
@@ -115,7 +116,7 @@ data/                     # SQLite volume (auth.sqlite gitignored, bind-mounted 
 - **Styling**: Tailwind CSS with CSS variables for theming (dark/light mode), custom slide animations
 - **UI library**: shadcn-style components built on Radix UI primitives in `frontend/src/components/ui/`
 - **Backend env**: Copy `backend/.env.example` to `backend/.env`; uses `DEV_` prefix for local dev, `PROD_` for Docker
-- **Auth-service env**: Copy `auth-service/.env.example` to `auth-service/.env`. Required: `BETTER_AUTH_SECRET` (`openssl rand -hex 32`), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BOOTSTRAP_ADMIN_EMAILS`. Migrations run programmatically at server boot (no separate CLI step).
+- **Auth-service env**: Copy `auth-service/.env.example` to `auth-service/.env`. Required: `BETTER_AUTH_SECRET` (`openssl rand -hex 32`), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BOOTSTRAP_ADMIN_EMAILS`, `PLEX_TOKEN_ENC_KEY` (`openssl rand -hex 32`; encrypts stored Plex tokens at rest). Migrations run programmatically at server boot (no separate CLI step).
 - **Package manager**: pnpm only (auth-service and frontend). Never use npm.
 - **API proxy**: Dev server proxies `/api` to `VITE_API_TARGET` (default `http://localhost:3000`, the auth-service)
 - **SSE endpoints**: `/scrape/piratebay/:name/stream` and `/scrape/rutracker/:name/stream` use Server-Sent Events. EventSource uses cookie auth via Better Auth.

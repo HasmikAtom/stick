@@ -12,6 +12,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - BOOTSTRAP_ADMIN_EMAILS=${BOOTSTRAP_ADMIN_EMAILS:-}
+      - PLEX_TOKEN_ENC_KEY=${PLEX_TOKEN_ENC_KEY:-}
       - GO_BACKEND_URL=http://backend-dev:8080
       - DATABASE_PATH=/data/auth.sqlite
       - NODE_ENV=development
@@ -31,10 +32,13 @@ services:
       dockerfile: Dockerfile.dev
     container_name: torrent-backend-dev
     environment:
-      - TRANSMISSION_HOST=${DEV_TRANSMISSION_HOST:-host.docker.internal}
-      - TRANSMISSION_PORT=${DEV_TRANSMISSION_PORT:-9091}
-      - TRANSMISSION_USERNAME=${DEV_TRANSMISSION_USERNAME:-}
-      - TRANSMISSION_PASSWORD=${DEV_TRANSMISSION_PASSWORD:-}
+      # Running in a container → backend/utils.go uses the PROD_ env prefix
+      # (detected via /.dockerenv), so the container-side names must be PROD_*.
+      - PROD_APP_PORT=8080
+      - PROD_TRANSMISSION_HOST=${DEV_TRANSMISSION_HOST:-host.docker.internal}
+      - PROD_TRANSMISSION_PORT=${DEV_TRANSMISSION_PORT:-9091}
+      - PROD_TRANSMISSION_USERNAME=${DEV_TRANSMISSION_USERNAME:-}
+      - PROD_TRANSMISSION_PASSWORD=${DEV_TRANSMISSION_PASSWORD:-}
     expose:
       - "8080"
     volumes:

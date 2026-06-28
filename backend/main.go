@@ -77,6 +77,9 @@ func main() {
 		api.PUT("/torrents/:id/rename", renameTorrent)
 		api.GET("/storage", getStorageInfo)
 
+		api.GET("/plex/ping", handlePlexPing)
+		api.POST("/plex/probe", handlePlexProbe)
+
 		api.POST("/scrape/piratebay/:name", scrapePirateBay)
 		api.POST("/scrape/rutracker/:name", scrapeRuTracker)
 		api.GET("/scrape/piratebay/:name/stream", scrapePirateBaySSE)
