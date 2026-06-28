@@ -32,10 +32,13 @@ services:
       dockerfile: Dockerfile
     container_name: torrent-backend-prod
     environment:
-      - TRANSMISSION_HOST=${PROD_TRANSMISSION_HOST}
-      - TRANSMISSION_PORT=${PROD_TRANSMISSION_PORT}
-      - TRANSMISSION_USERNAME=${PROD_TRANSMISSION_USERNAME}
-      - TRANSMISSION_PASSWORD=${PROD_TRANSMISSION_PASSWORD}
+      # Running in a container → backend/utils.go uses the PROD_ env prefix
+      # (detected via /.dockerenv), so the container-side names must be PROD_*.
+      - PROD_APP_PORT=8080
+      - PROD_TRANSMISSION_HOST=${PROD_TRANSMISSION_HOST}
+      - PROD_TRANSMISSION_PORT=${PROD_TRANSMISSION_PORT}
+      - PROD_TRANSMISSION_USERNAME=${PROD_TRANSMISSION_USERNAME}
+      - PROD_TRANSMISSION_PASSWORD=${PROD_TRANSMISSION_PASSWORD}
     expose:
       - "8080"
     volumes:
