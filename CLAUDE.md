@@ -86,7 +86,11 @@ The dev stack **coexists with the prod stack** (`torrent-prod` project): only th
 - dev  → `DEV_GOOGLE_CLIENT_ID` / `DEV_GOOGLE_CLIENT_SECRET` / `DEV_BETTER_AUTH_URL` (defaults to `http://localhost:5173`)
 - prod → `PROD_GOOGLE_CLIENT_ID` / `PROD_GOOGLE_CLIENT_SECRET` / `PROD_BETTER_AUTH_URL`
 
-Better Auth derives the Google callback as `${BETTER_AUTH_URL}/api/auth/callback/google`, so each stack's origin must be registered as an Authorized redirect URI on its Google client (dev: `http://localhost:5173/api/auth/callback/google`; prod: `https://<host>/api/auth/callback/google`). A single Google client may serve both if it lists both redirect URIs. The shared `.env` keys (`BOOTSTRAP_ADMIN_EMAILS`, `PLEX_TOKEN_ENC_KEY`, `BETTER_AUTH_SECRET`) are common to both stacks, which share the same `./data/auth.sqlite`.
+Better Auth derives the Google callback as `${BETTER_AUTH_URL}/api/auth/callback/google`, so each stack's origin must be registered as an **Authorized redirect URI** on its Google client. Dev and prod use **separate Google OAuth clients** (created in Google Cloud Console under the same project), each with exactly one redirect URI registered:
+- dev  client → `http://localhost:5173/api/auth/callback/google`
+- prod client → `https://stick.herxagon.org/api/auth/callback/google`
+
+A missing/incorrect redirect URI surfaces as Google's *"Access blocked: This app's request is invalid"* (`redirect_uri_mismatch`) — fix it in the Console, not in code. (A single client listing both URIs would also work, but keeping them separate isolates dev and prod completely.) The shared `.env` keys (`BOOTSTRAP_ADMIN_EMAILS`, `PLEX_TOKEN_ENC_KEY`, `BETTER_AUTH_SECRET`) are common to both stacks, which share the same `./data/auth.sqlite`. Credentials live only in the gitignored `.env` — never commit them.
 
 **pnpm is pinned** via the `packageManager` field (`pnpm@9.15.4`) in `auth-service/package.json` and `frontend/package.json` so corepack uses a Node-20-compatible pnpm in the `node:20-alpine` images. Do not remove it — without the pin, corepack pulls the latest pnpm (which requires Node 22) and the image builds fail with `ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite`.
 

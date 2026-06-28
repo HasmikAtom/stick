@@ -66,6 +66,14 @@ fi
 #    Google must use THIS stack's own origin. A mismatch here is exactly what
 #    broke login on every deploy (dev/prod sharing one BETTER_AUTH_URL/client).
 AUTH="torrent-auth-$MODE"
+# Wait for the auth-service to actually be listening before probing it
+# (a freshly recreated container isn't up the instant `up -d` returns).
+for _ in $(seq 1 15); do
+  if docker exec "$AUTH" sh -c '(netstat -tln 2>/dev/null || ss -tln) | grep -q ":3000 "' 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
 origin_expected="$(docker exec "$AUTH" sh -c 'printf %s "$BETTER_AUTH_URL"' 2>/dev/null || true)"
 oauth="$(docker exec "$AUTH" node -e '
 fetch("http://localhost:3000/api/auth/sign-in/social",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({provider:"google",callbackURL:"/"})})
