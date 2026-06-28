@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   auth-service:
     restart: always
@@ -9,9 +7,11 @@ services:
     container_name: torrent-auth-prod
     environment:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Prod gets its own Google client + origin (PROD_*) so deploying dev never
+      # clobbers prod's OAuth config (and vice versa). See DEV_* in docker-compose.dev.yml.
+      - BETTER_AUTH_URL=${PROD_BETTER_AUTH_URL}
+      - GOOGLE_CLIENT_ID=${PROD_GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${PROD_GOOGLE_CLIENT_SECRET}
       - BOOTSTRAP_ADMIN_EMAILS=${BOOTSTRAP_ADMIN_EMAILS}
       - PLEX_TOKEN_ENC_KEY=${PLEX_TOKEN_ENC_KEY}
       - GO_BACKEND_URL=http://backend:8080

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   auth-service:
     build:
@@ -8,9 +6,11 @@ services:
     container_name: torrent-auth-dev
     environment:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-only-secret-change-me-dev-only-secret}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:5173}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      # Dev gets its own Google client + origin so deploying prod never
+      # clobbers dev's OAuth config (and vice versa). See PROD_* in docker-compose.yml.
+      - BETTER_AUTH_URL=${DEV_BETTER_AUTH_URL:-http://localhost:5173}
+      - GOOGLE_CLIENT_ID=${DEV_GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${DEV_GOOGLE_CLIENT_SECRET:-}
       - BOOTSTRAP_ADMIN_EMAILS=${BOOTSTRAP_ADMIN_EMAILS:-}
       - PLEX_TOKEN_ENC_KEY=${PLEX_TOKEN_ENC_KEY:-}
       - GO_BACKEND_URL=http://backend-dev:8080
